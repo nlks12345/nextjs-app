@@ -8,28 +8,23 @@ import {
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
-import { Pool } from 'pg';
-
+// import postgres from 'postgres';
+ 
+// const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
 export async function fetchRevenue() {
-  // Load environment variables
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
 
-  const client = await pool.connect();
   try {
     // Artificially delay a response for demo purposes.
     // Don't do this in production :)
 
-    // console.log('Fetching revenue data...');
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log('Fetching revenue data...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // const data = await sql<Revenue>`SELECT * FROM revenue`;
-    const data = await client.query<Revenue>(`SELECT * FROM revenue`);
+    const data = await sql<Revenue>`SELECT * FROM revenue`;
 
-
-    // console.log('Data fetch completed after 3 seconds.');
+    console.log('Data fetch completed after 3 seconds.');
     return data.rows;
   } catch (error) {
     console.error('Database Error:', error);
@@ -38,24 +33,23 @@ export async function fetchRevenue() {
 }
 
 export async function fetchLatestInvoices() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
+  // const pool = new Pool({
+  //   connectionString: process.env.DATABASE_URL,
+  // });
   
-  const client = await pool.connect();
   try {
-    // const data = await sql<LatestInvoiceRaw>`
-    //   SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
-    //   FROM invoices
-    //   JOIN customers ON invoices.customer_id = customers.id
-    //   ORDER BY invoices.date DESC
-    //   LIMIT 5`;
-      const data = await client.query<LatestInvoiceRaw>(`
+   
+    console.log('Fetching latest invoice data...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const data = await sql<LatestInvoiceRaw>`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
-      LIMIT 5`);
+      LIMIT 5`;
+      
+      console.log('Data fetch completed after 3 seconds.');
 
     const latestInvoices = data.rows.map((invoice) => ({
       ...invoice,
@@ -69,33 +63,38 @@ export async function fetchLatestInvoices() {
 }
 
 export async function fetchCardData() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
+  // const pool = new Pool({
+  //   connectionString: process.env.DATABASE_URL,
+  // });
   
-  const client = await pool.connect();
   try {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-    // const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-    // const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    // const invoiceStatusPromise = sql`SELECT
-    //      SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
-    //      SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-    //      FROM invoices`;
-    const invoiceCountPromise = client.query(`SELECT COUNT(*) FROM invoices`);
-    const customerCountPromise = client.query(`SELECT COUNT(*) FROM customers`);
-    const invoiceStatusPromise = client.query(`SELECT
+    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+    const invoiceStatusPromise = sql`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`);
+         FROM invoices`;
+    // const invoiceCountPromise = client.query(`SELECT COUNT(*) FROM invoices`);
+    // const customerCountPromise = client.query(`SELECT COUNT(*) FROM customers`);
+    // const invoiceStatusPromise = client.query(`SELECT
+    //      SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+    //      SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
+    //      FROM invoices`);
+
+    console.log('Fetching cards data...');
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const data = await Promise.all([
       invoiceCountPromise,
       customerCountPromise,
       invoiceStatusPromise,
     ]);
+
+    console.log('Data fetch completed after 3 seconds.');
 
     const numberOfInvoices = Number(data[0].rows[0].count ?? '0');
     const numberOfCustomers = Number(data[1].rows[0].count ?? '0');
@@ -121,34 +120,14 @@ export async function fetchFilteredInvoices(
 ) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
+  // const pool = new Pool({
+  //   connectionString: process.env.DATABASE_URL,
+  // });
 
-  const client = await pool.connect();
+  // const client = await pool.connect();
 
   try {
-    // const invoices = await sql<InvoicesTable>`
-    //   SELECT
-    //     invoices.id,
-    //     invoices.amount,
-    //     invoices.date,
-    //     invoices.status,
-    //     customers.name,
-    //     customers.email,
-    //     customers.image_url
-    //   FROM invoices
-    //   JOIN customers ON invoices.customer_id = customers.id
-    //   WHERE
-    //     customers.name ILIKE ${`%${query}%`} OR
-    //     customers.email ILIKE ${`%${query}%`} OR
-    //     invoices.amount::text ILIKE ${`%${query}%`} OR
-    //     invoices.date::text ILIKE ${`%${query}%`} OR
-    //     invoices.status ILIKE ${`%${query}%`}
-    //   ORDER BY invoices.date DESC
-    //   LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    // `;
-    const invoices = await client.query<InvoicesTable>(`
+    const invoices = await sql<InvoicesTable>`
       SELECT
         invoices.id,
         invoices.amount,
@@ -160,14 +139,34 @@ export async function fetchFilteredInvoices(
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       WHERE
-        customers.name ILIKE $1 OR
-        customers.email ILIKE $1 OR
-        invoices.amount::text ILIKE $1 OR
-        invoices.date::text ILIKE $1 OR
-        invoices.status ILIKE $1
+        customers.name ILIKE ${`%${query}%`} OR
+        customers.email ILIKE ${`%${query}%`} OR
+        invoices.amount::text ILIKE ${`%${query}%`} OR
+        invoices.date::text ILIKE ${`%${query}%`} OR
+        invoices.status ILIKE ${`%${query}%`}
       ORDER BY invoices.date DESC
-      LIMIT $2 OFFSET $3
-    `,[query, ITEMS_PER_PAGE, offset]);
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+    // const invoices = await client.query<InvoicesTable>(`
+    //   SELECT
+    //     invoices.id,
+    //     invoices.amount,
+    //     invoices.date,
+    //     invoices.status,
+    //     customers.name,
+    //     customers.email,
+    //     customers.image_url
+    //   FROM invoices
+    //   JOIN customers ON invoices.customer_id = customers.id
+    //   WHERE
+    //     customers.name ILIKE $1 OR
+    //     customers.email ILIKE $1 OR
+    //     invoices.amount::text ILIKE $1 OR
+    //     invoices.date::text ILIKE $1 OR
+    //     invoices.status ILIKE $1
+    //   ORDER BY invoices.date DESC
+    //   LIMIT $2 OFFSET $3
+    // `,['%'+query+'%', ITEMS_PER_PAGE, offset]);
 
 
     return invoices.rows;
@@ -179,15 +178,21 @@ export async function fetchFilteredInvoices(
 
 export async function fetchInvoicesPages(query: string) {
   try {
+    // const pool = new Pool({
+    //   connectionString: process.env.DATABASE_URL,
+    // });
+  
+    // const client = await pool.connect();
+    
     const count = await sql`SELECT COUNT(*)
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
     WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
+      customers.name ILIKE ${`%${query}%`}  OR
+      customers.email ILIKE  ${`%${query}%`}   OR
+      invoices.amount::text ILIKE ${`%${query}%`}  OR
+      invoices.date::text ILIKE ${`%${query}%`}  OR
+      invoices.status ILIKE ${`%${query}%`} 
   `;
 
     const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
